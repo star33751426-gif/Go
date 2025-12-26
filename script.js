@@ -72,6 +72,8 @@
   function opp(c){ return c===BLACK ? WHITE : (c===WHITE ? BLACK : EMPTY); }
   function key(x,y){ return `${x},${y}`; }
   function cloneBoard(b){ return b.map(r => r.slice()); }
+  function boardHash(b){return b.map(r => r.join("")).join("|");}
+
 
   function showMsg(text, ms=900){
     floatingMsg.textContent = text;
@@ -141,6 +143,12 @@
         }
       }
     }
+    
+        // 🔥 超級劫規則（盤面重複禁止）
+    const h = boardHash(next);
+    if(history.some(s => boardHash(s.board) === h)){
+      return { ok:false, reason:"禁著手（重複盤面／劫）" };
+    }
 
     // 再檢查自殺
     const myGroup = getGroupAndLiberties(next, x, y);
@@ -149,11 +157,13 @@
     }
 
     // 簡易 Ko：只提 1 子且自己群=單子 -> 設 Ko 點為被提之處
+    // 正確 Ko 規則
     let newKo = null;
-    if(totalCaptured === 1 && myGroup.stones.length === 1){
+    if(totalCaptured === 1 && myGroup.libertiesCount === 1){
       const [cx,cy] = capturedStones[0];
       newKo = { x: cx, y: cy };
     }
+
 
     if(allowCommit){
       history.push({
@@ -180,9 +190,20 @@
       lastWasPass = false;
 
       if(!hasLegalMove(toPlay)){
-        showMsg("無合法棋，自動讓子");
-        autoPass();
-      }
+  if(!hasLegalMove(color)){
+    // 🔒 雙方都無合法棋 → 直接終局計分
+    gameOver = true;
+    statusEl.textContent = "終局（雙方無合法棋）";
+    computeAndShowScore();
+    showMsg("盤面封閉，自動結算", 1600);
+    updateUI();
+    draw();
+    return;
+  }
+  showMsg("無合法棋，自動讓子");
+  autoPass();
+}
+
 
 
       updateUI();
@@ -378,6 +399,32 @@ if(koPoint && !gameOver){
   ctx.stroke();
   ctx.restore();
 }
+    // ===== 禁著點顯示（Super-Ko / 自殺 / 佔據） =====
+if(!gameOver){
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,80,80,0.9)";
+  ctx.lineWidth = 3;
+
+  for(let y=0;y<N;y++){
+    for(let x=0;x<N;x++){
+      if(board[y][x] !== EMPTY) continue;
+
+      const r = tryPlayMove(x,y,toPlay,board,false);
+      if(!r.ok){
+        const cx = pad + x*cell;
+        const cy = pad + y*cell;
+        ctx.beginPath();
+        ctx.moveTo(cx - cell*0.25, cy - cell*0.25);
+        ctx.lineTo(cx + cell*0.25, cy + cell*0.25);
+        ctx.moveTo(cx + cell*0.25, cy - cell*0.25);
+        ctx.lineTo(cx - cell*0.25, cy + cell*0.25);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
 
   }
 
@@ -693,14 +740,29 @@ function hasLegalMove(color){
   for(let y=0;y<N;y++){
     for(let x=0;x<N;x++){
       if(board[y][x] !== EMPTY) continue;
-      // Ko 禁卓直接視為不能下
-      if(koPoint && koPoint.x===x && koPoint.y===y) continue;
+
+      // 嘗試下
       const r = tryPlayMove(x,y,color,board,false);
-      if(r.ok) return true;
+      if(!r.ok) continue;
+
+      // ⚠️ 若這步下完對方也無合法棋，代表是填眼 → 不算合法
+      if(!hasLegalMoveAfter(r.nextBoard, opp(color))) continue;
+
+      return true;
     }
   }
   return false;
 }
+
+  function hasLegalMoveAfter(b, color){
+  for(let y=0;y<N;y++)
+    for(let x=0;x<N;x++){
+      if(b[y][x] !== EMPTY) continue;
+      if(tryPlayMove(x,y,color,b,false).ok) return true;
+    }
+  return false;
+}
+
 
 
   function removeDeadStones(){
@@ -722,6 +784,8 @@ function hasLegalMove(color){
     }
   }
 }
+  
+  
 
   
   // ======= 啟動 =======
