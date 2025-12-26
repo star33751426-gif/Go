@@ -31,6 +31,13 @@
   let passBlack = 0;
   let passWhite = 0;
   let lastWasPass = false;
+  let hoverPoint = null;
+  let lastMovePoint = null;
+
+
+  let territoryMap = null;
+  const btnScore = document.getElementById("btnScore");
+
 
 
   // 9路星位： (2,2) (2,6) (6,2) (6,6)；天元：(4,4)
@@ -117,12 +124,32 @@
   }
 
   function removeStones(b, stones){
+    function flashCapture(stones){
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,80,80,0.9)";
+  ctx.lineWidth = 6;
+  stones.forEach(([x,y])=>{
+    const pad=70, size=Math.min(canvas.width,canvas.height)-pad*2;
+    const cell=size/(N-1);
+    const cx=pad+x*cell, cy=pad+y*cell;
+    ctx.beginPath();
+    ctx.arc(cx,cy,cell*0.45,0,Math.PI*2);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
     for(const [x,y] of stones) b[y][x] = EMPTY;
   }
 
   // ======= 規則：落子 / 提子 / 自殺 / Ko =======
   function tryPlayMove(x,y, color, b = board, allowCommit = true){
     if(gameOver) return { ok:false, reason:"已終局" };
+    // 🚫 禁止填自己真眼（終局判定關鍵）
+if(b[y][x] === EMPTY && isTrueEye(b, x, y, color)){
+  return { ok:false, reason:"禁著點（真眼）" };
+}
+
     if(!inBounds(x,y)) return { ok:false, reason:"越界" };
     if(b[y][x] !== EMPTY) return { ok:false, reason:"此處已有棋子" };
     if(koPoint && koPoint.x===x && koPoint.y===y) return { ok:false, reason:"劫（Ko）禁止立即回提" };
@@ -177,6 +204,7 @@
       });
 
       board = next;
+      lastMovePoint = { x, y };
       koPoint = newKo;
       toPlay = opp(color);
       moveCount++;
@@ -255,24 +283,58 @@
   }
 
   function computeAndShowScore(){
-  // 1. 清除死棋
+  territoryMap = Array.from({length:N},()=>Array(N).fill(EMPTY));
+
   removeDeadStones();
   draw();
 
-  // 2. 計地
-  const { terrB, terrW } = computeTerritory(board);
-  scoreTerrB.textContent = String(terrB);
-  scoreTerrW.textContent = String(terrW);
+  const visited = Array.from({ length:N },()=>Array(N).fill(false));
+  let terrB = 0, terrW = 0;
 
-  // 3. 加上提子
+  function bfs(sx,sy){
+    const q=[[sx,sy]];
+    visited[sy][sx]=true;
+    const empties=[];
+    let infB=0, infW=0;
+
+    while(q.length){
+      const [x,y]=q.shift();
+      empties.push([x,y]);
+      for(const [nx,ny] of neighbors4(x,y)){
+        const v=board[ny][nx];
+        if(v===EMPTY && !visited[ny][nx]){
+          visited[ny][nx]=true;
+          q.push([nx,ny]);
+        }
+        if(v===BLACK) infB++;
+        if(v===WHITE) infW++;
+      }
+    }
+
+    if(infB>infW){
+      terrB+=empties.length;
+      empties.forEach(([x,y])=>territoryMap[y][x]=BLACK);
+    }else if(infW>infB){
+      terrW+=empties.length;
+      empties.forEach(([x,y])=>territoryMap[y][x]=WHITE);
+    }
+  }
+
+  for(let y=0;y<N;y++)
+    for(let x=0;x<N;x++)
+      if(board[y][x]===EMPTY && !visited[y][x]) bfs(x,y);
+
+  scoreTerrB.textContent=terrB;
+  scoreTerrW.textContent=terrW;
+
   const bTotal = terrB + captures.B;
   const wTotal = terrW + captures.W + KOMI;
 
   const diff = wTotal - bTotal;
-  if(Math.abs(diff) < 1e-9) scoreResult.textContent = "平手";
-  else if(diff > 0) scoreResult.textContent = `白勝 ${diff.toFixed(2)}`;
-  else scoreResult.textContent = `黑勝 ${(-diff).toFixed(2)}`;
+  if(diff>0) scoreResult.textContent=`白勝 ${diff.toFixed(2)}`;
+  else scoreResult.textContent=`黑勝 ${(-diff).toFixed(2)}`;
 }
+
 
 
   // ======= UI =======
@@ -285,6 +347,15 @@
     if(gameOver) statusEl.textContent = "終局";
     document.getElementById("passBlack").textContent = passBlack;
     document.getElementById("passWhite").textContent = passWhite;
+    // 🔒 若盤面已封閉，立即結算
+if(!gameOver){
+  if(!hasLegalMove(BLACK) && !hasLegalMove(WHITE)){
+    gameOver = true;
+    statusEl.textContent = "終局（盤面封閉）";
+    computeAndShowScore();
+    showMsg("盤面封閉，自動結算", 1600);
+  }
+}
 
   }
 
@@ -424,7 +495,63 @@ if(!gameOver){
   }
   ctx.restore();
 }
+// 👻 Hover 預覽棋子
+if(hoverPoint && !gameOver){
+  const {x,y} = hoverPoint;
+  if(board[y][x] === EMPTY){
+    const r = tryPlayMove(x,y,toPlay,board,false);
+    if(r.ok){
+      const cx = pad + x*cell;
+      const cy = pad + y*cell;
+      const rr = cell*0.46;
 
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.beginPath();
+      ctx.fillStyle = (toPlay===BLACK) ? "#000" : "#fff";
+      ctx.arc(cx, cy, rr, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+    // 🎯 最後一手標記
+if(lastMovePoint){
+  const {x,y} = lastMovePoint;
+  const cx = pad + x*cell;
+  const cy = pad + y*cell;
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,80,80,0.9)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(cx, cy, cell*0.22, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// 🟦🟨 領地上色（僅結算時）
+if(gameOver && territoryMap){
+  for(let y=0;y<N;y++){
+    for(let x=0;x<N;x++){
+      const owner = territoryMap[y][x];
+      if(owner===EMPTY) continue;
+
+      const cx = pad + x*cell;
+      const cy = pad + y*cell;
+      const r = cell*0.32;
+
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = owner===BLACK ? "#000" : "#fff";
+      ctx.beginPath();
+      ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
 
   }
 
@@ -660,6 +787,19 @@ if(!gameOver){
     draw();
   });
 
+  canvas.addEventListener("mousemove", ev => {
+  if(gameOver) return;
+  const p = canvasToBoardXY(ev.clientX, ev.clientY);
+  hoverPoint = p;
+  draw();
+});
+
+canvas.addEventListener("mouseleave", () => {
+  hoverPoint = null;
+  draw();
+});
+
+  
   btnRestart.addEventListener("click", () => resetGame());
 
   aiLevelSel.addEventListener("change", () => {
@@ -744,6 +884,9 @@ function hasLegalMove(color){
       // 嘗試下
       const r = tryPlayMove(x,y,color,board,false);
       if(!r.ok) continue;
+      
+      // 🚫 禁止填自己眼
+      if(isTrueEye(board, x, y, color)) continue;
 
       // ⚠️ 若這步下完對方也無合法棋，代表是填眼 → 不算合法
       if(!hasLegalMoveAfter(r.nextBoard, opp(color))) continue;
@@ -763,7 +906,15 @@ function hasLegalMove(color){
   return false;
 }
 
-
+function isTrueEye(b, x, y, color){
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+  for(const [dx,dy] of dirs){
+    const nx=x+dx, ny=y+dy;
+    if(nx<0||nx>=N||ny<0||ny>=N) return false;
+    if(b[ny][nx] !== color) return false;
+  }
+  return true;
+}
 
   function removeDeadStones(){
   let removed = true;
@@ -785,7 +936,17 @@ function hasLegalMove(color){
   }
 }
   
-  
+btnScore.addEventListener("click", () => {
+  if(gameOver) return;
+
+  gameOver = true;
+  statusEl.textContent = "終局（手動結算）";
+  computeAndShowScore();
+  showMsg("已進入結算模式", 1400);
+  updateUI();
+  draw();
+});
+
 
   
   // ======= 啟動 =======
