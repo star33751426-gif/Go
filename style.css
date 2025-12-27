@@ -203,3 +203,41 @@ canvas{
 .label{ font-size:16px; }
 select{ font-size:16px; padding:10px 14px; }
 
+.legendBox{
+  margin-top:14px;
+  padding:12px;
+  border-top:1px dashed rgba(255,255,255,.15);
+}
+.legendTitle{
+  font-weight:800;
+  margin-bottom:8px;
+  color:var(--accent);
+}
+.legendItem{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:8px;
+  font-size:14px;
+}
+.legendIcon{
+  width:22px;
+  height:22px;
+  position:relative;
+}
+.eyeIcon{
+  border:2px solid #ffd84f;
+  border-radius:50%;
+}
+.forbidIcon::before,
+.forbidIcon::after{
+  content:"";
+  position:absolute;
+  width:100%;
+  height:3px;
+  background:#ff6b6b;
+  top:50%;
+  left:0;
+}
+.forbidIcon::before{ transform:rotate(45deg); }
+.forbidIcon::after{ transform:rotate(-45deg); }
