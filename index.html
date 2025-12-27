@@ -56,6 +56,23 @@
           <div class="stat"><div class="k">手數</div><div class="v" id="moveStat">0</div></div>
           <div class="stat"><div class="k">狀態</div><div class="v" id="status">進行中</div></div>
         </div>
+        <section class="legendBox">
+  <div class="legendTitle">標示說明</div>
+
+  <div class="legendItem">
+    <span class="legendIcon eyeIcon"></span>
+    <span>眼（可下但通常不建議）</span>
+  </div>
+
+  <div class="legendItem">
+    <span class="legendIcon forbidIcon"></span>
+    <span>禁著點（劫 / 自殺 / 重複盤面）</span>
+  </div>
+  <div>
+        結束條件:盤面上都是禁卓點or眼(我的眼只有判斷小的，大的判斷不到)
+  </div>
+</section>
+
       </section>
 
       <section class="boardPanel">
@@ -73,7 +90,9 @@
             <div class="scoreBox"><div class="k">結果</div><div class="v" id="scoreResult">—</div></div>
           </div>
         </section>
+        
       </section>
+      
     </main>
 
     <footer class="footer">純前端 JS｜完整圍棋規則</footer>
