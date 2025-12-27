@@ -51,7 +51,7 @@
   let board, toPlay, koPoint, captures, moveCount, passCount, gameOver;
   let history = [];
 
-  function resetGame() {
+  function resetGame() {  
     board = Array.from({ length: N }, () => Array(N).fill(EMPTY));
     toPlay = BLACK;
     koPoint = null;
@@ -145,10 +145,7 @@
   // ======= 規則：落子 / 提子 / 自殺 / Ko =======
   function tryPlayMove(x,y, color, b = board, allowCommit = true){
     if(gameOver) return { ok:false, reason:"已終局" };
-    // 🚫 禁止填自己真眼（終局判定關鍵）
-if(b[y][x] === EMPTY && isTrueEye(b, x, y, color)){
-  return { ok:false, reason:"禁著點（真眼）" };
-}
+    
 
     if(!inBounds(x,y)) return { ok:false, reason:"越界" };
     if(b[y][x] !== EMPTY) return { ok:false, reason:"此處已有棋子" };
@@ -495,6 +492,28 @@ if(!gameOver){
   }
   ctx.restore();
 }
+    
+    // 👁 真眼提示（不是禁著，只做視覺提示）
+if(!gameOver){
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,220,0,0.9)";
+  ctx.lineWidth = 2;
+
+  for(let y=0;y<N;y++){
+    for(let x=0;x<N;x++){
+      if(board[y][x] !== EMPTY) continue;
+      if(isTrueEye(board, x, y, toPlay)){
+        const cx = pad + x*cell;
+        const cy = pad + y*cell;
+        ctx.beginPath();
+        ctx.arc(cx,cy,cell*0.18,0,Math.PI*2);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
 // 👻 Hover 預覽棋子
 if(hoverPoint && !gameOver){
   const {x,y} = hoverPoint;
@@ -907,14 +926,10 @@ function hasLegalMove(color){
 }
 
 function isTrueEye(b, x, y, color){
-  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-  for(const [dx,dy] of dirs){
-    const nx=x+dx, ny=y+dy;
-    if(nx<0||nx>=N||ny<0||ny>=N) return false;
-    if(b[ny][nx] !== color) return false;
-  }
-  return true;
+  return isEyeRegion(b, x, y, color);
 }
+
+
 
   function removeDeadStones(){
   let removed = true;
@@ -947,6 +962,46 @@ btnScore.addEventListener("click", () => {
   draw();
 });
 
+function getEmptyRegion(b, sx, sy){
+  const q=[[sx,sy]];
+  const visited=new Set([key(sx,sy)]);
+  const cells=[];
+  const borderColors=new Set();
+
+  while(q.length){
+    const [x,y]=q.shift();
+    cells.push([x,y]);
+    for(const [nx,ny] of neighbors4(x,y)){
+      if(nx<0||nx>=N||ny<0||ny>=N) continue;
+      const v=b[ny][nx];
+      if(v===EMPTY && !visited.has(key(nx,ny))){
+        visited.add(key(nx,ny));
+        q.push([nx,ny]);
+      }
+      if(v===BLACK || v===WHITE) borderColors.add(v);
+    }
+  }
+  return {cells,borderColors};
+}
+
+  function isEyeRegion(b, x, y, color){
+  if(b[y][x]!==EMPTY) return false;
+
+  const region=getEmptyRegion(b,x,y);
+
+  // 必須完全被同一色包住
+  if(region.borderColors.size!==1 || !region.borderColors.has(color)) return false;
+
+  // 測試破眼：嘗試在眼域裡下敵子
+  for(const [ex,ey] of region.cells){
+    const test=cloneBoard(b);
+    test[ey][ex]=opp(color);
+    const g=getGroupAndLiberties(test, ex, ey);
+    if(g.libertiesCount>0) return false; // 可破 → 假眼
+  }
+
+  return true; // 完全不可破 → 真眼域
+}
 
   
   // ======= 啟動 =======
