@@ -1,83 +1,83 @@
 <!doctype html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>1132917-FinalTerm</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-<header class="topbar">
-  <h1>圍棋 9×9</h1>
-  <div class="sub">
-    規則：輪流落子｜氣與提子｜禁自殺｜簡易劫（Ko）｜讓子制終局＋白貼 3.75
-  </div>
-</header>
+    
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>1132917-FinalTerm</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+    
+  <body>
+    <header class="topbar">
+      <h1>圍棋 9×9</h1>
+      <div class="sub">
+        規則：輪流落子｜氣與提子｜禁自殺｜簡易劫（Ko）｜讓子制終局＋白貼 3.75
+      </div>
+    </header>
 
-<main class="wrap">
-<section class="panel">
+    <main class="wrap">
+      <section class="panel">
+        <div class="row">
+          <div class="badge" id="turnBadge">輪到：黑</div>
+          <div class="badge muted" id="koBadge">劫：無</div>
+        </div>
 
-  <div class="row">
-    <div class="badge" id="turnBadge">輪到：黑</div>
-    <div class="badge muted" id="koBadge">劫：無</div>
-  </div>
+        <div class="row">
+          <button id="btnPass" class="btn">讓子</button>
+          <button id="btnResign" class="btn danger">投降</button>
+          <button id="btnScore" class="btn danger">直接結算</button>
+          <button id="btnRestart" class="btn danger ghost">重新開始</button>
+        </div>
 
-  <div class="row">
-    <button id="btnPass" class="btn">讓子</button>
-    <button id="btnResign" class="btn danger">投降</button>
-    <button id="btnScore" class="btn danger">直接結算</button>
-    <button id="btnRestart" class="btn danger ghost">重新開始</button>
-  </div>
+        <div class="row">
+          <label class="label">對戰模式：
+            <select id="gameMode">
+              <option value="PVP">雙人</option>
+              <option value="AI" selected>人機</option>
+            </select>
+          </label>
 
-  <div class="row">
-    <label class="label">對戰模式：
-      <select id="gameMode">
-        <option value="PVP">雙人</option>
-        <option value="AI" selected>人機</option>
-      </select>
-    </label>
+          <label class="label">AI 棋力：
+            <select id="aiLevel">
+              <option value="1">基本</option>
+              <option value="2" selected>進階</option>
+            </select>
+          </label>
+        </div>
 
-    <label class="label">AI 棋力：
-      <select id="aiLevel">
-        <option value="1">基本</option>
-        <option value="2" selected>進階</option>
-      </select>
-    </label>
-  </div>
+        <div class="row">
+          <div class="stat"><div class="k">黑方讓子</div><div class="v" id="passBlack">0</div></div>
+          <div class="stat"><div class="k">白方讓子</div><div class="v" id="passWhite">0</div></div>
+        </div>
 
-  <div class="row">
-    <div class="stat"><div class="k">黑方讓子</div><div class="v" id="passBlack">0</div></div>
-    <div class="stat"><div class="k">白方讓子</div><div class="v" id="passWhite">0</div></div>
-  </div>
+        <div class="row">
+          <div class="stat"><div class="k">提子（黑 / 白）</div><div class="v" id="capStat">0 / 0</div></div>
+          <div class="stat"><div class="k">手數</div><div class="v" id="moveStat">0</div></div>
+          <div class="stat"><div class="k">狀態</div><div class="v" id="status">進行中</div></div>
+        </div>
+      </section>
 
-  <div class="row">
-    <div class="stat"><div class="k">提子（黑 / 白）</div><div class="v" id="capStat">0 / 0</div></div>
-    <div class="stat"><div class="k">手數</div><div class="v" id="moveStat">0</div></div>
-    <div class="stat"><div class="k">狀態</div><div class="v" id="status">進行中</div></div>
-  </div>
+      <section class="boardPanel">
+        <div class="boardWrap">
+          <canvas id="board" width="860" height="860"></canvas>
+          <div id="floatingMsg" class="floatingMsg hidden"></div>
+        </div>
 
-</section>
+        <section class="panel scorePanel">
+          <h2>終局計分</h2>
+          <div class="scoreGrid">
+            <div class="scoreBox"><div class="k">黑地</div><div class="v" id="scoreTerrB">0</div></div>
+            <div class="scoreBox"><div class="k">白地</div><div class="v" id="scoreTerrW">0</div></div>
+            <div class="scoreBox"><div class="k">白貼</div><div class="v">3.75</div></div>
+            <div class="scoreBox"><div class="k">結果</div><div class="v" id="scoreResult">—</div></div>
+          </div>
+        </section>
+      </section>
+    </main>
 
-<section class="boardPanel">
-  <div class="boardWrap">
-    <canvas id="board" width="860" height="860"></canvas>
-    <div id="floatingMsg" class="floatingMsg hidden"></div>
-  </div>
+    <footer class="footer">純前端 JS｜完整圍棋規則</footer>
 
-  <section class="panel scorePanel">
-    <h2>終局計分</h2>
-    <div class="scoreGrid">
-      <div class="scoreBox"><div class="k">黑地</div><div class="v" id="scoreTerrB">0</div></div>
-      <div class="scoreBox"><div class="k">白地</div><div class="v" id="scoreTerrW">0</div></div>
-      <div class="scoreBox"><div class="k">白貼</div><div class="v">3.75</div></div>
-      <div class="scoreBox"><div class="k">結果</div><div class="v" id="scoreResult">—</div></div>
-    </div>
-  </section>
-</section>
-</main>
-
-<footer class="footer">純前端 JS｜完整圍棋規則</footer>
-
-<script src="script.js"></script>
-</body>
+    <script src="script.js"></script>
+  </body>
 </html>
